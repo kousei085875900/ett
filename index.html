@@ -79,6 +79,18 @@
                 margin-top: 10px;
             }
 
+            .advancedOptionsBoxRow input[type="text"] {
+                width: 90%;
+                padding: 5px 8px;
+                margin-top: 4px;
+                background-color: #222;
+                color: #eee;
+                border: 1px solid #666;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 13px;
+            }
+
             #input {
                 cursor: pointer;
                 position: absolute;
@@ -144,6 +156,10 @@
             </div>
             <div id="advancedOptionsBox">
                 <div class="advancedOptionsBoxRow">
+                    <label for="coreSourceInput"> External Core / Data Base URL:</label><br>
+                    <input type="text" id="coreSourceInput" value="https://cdn.emulatorjs.org/stable/data/" placeholder="https://cdn.emulatorjs.org/stable/data/" />
+                </div>
+                <div class="advancedOptionsBoxRow">
                     <input type="file" id ="inputAdvanced" title="BIOS" />
                     <label for="inputAdvanced"> Upload BIOS file (if required)</label>
                 </div>
@@ -177,7 +193,8 @@
             let browserMode;
 
             const biosFileInput = document.getElementById("inputAdvanced");
-            
+            const coreSourceInput = document.getElementById("coreSourceInput");
+
             const advancedToggle = document.getElementById("advancedToggle");
             const advanced = document.getElementById("advanced");
             const advancedOptionsBox = document.getElementById("advancedOptionsBox");
@@ -192,6 +209,21 @@
 
             const queryString = window.location.search;
             const urlParams = new URLSearchParams(queryString);
+
+            // URLクエリ ?coreBase= で外部コア取得元を上書き可能にする
+            if (urlParams.get("coreBase")) {
+                coreSourceInput.value = urlParams.get("coreBase");
+            }
+
+            // 末尾スラッシュを正規化して外部dataディレクトリURLを返す
+            function getNormalizedDataPath() {
+                const raw = (coreSourceInput.value || "").trim();
+                if (!raw) {
+                    return "https://cdn.emulatorjs.org/stable/data/";
+                }
+                return raw.endsWith("/") ? raw : raw + "/";
+            }
+
             const debugToggle = document.getElementById("debugToggle");
             debugToggle.addEventListener("change", (event) => {
                 enableDebug = event.target.checked;
@@ -290,6 +322,7 @@
                 const parts = upload ? input.files[0].name.split(".") : file.split(".");
 
                 const biosUrl = biosFileInput.files.length > 0 ? biosFileInput.files[0] : "";
+                const externalDataPath = getNormalizedDataPath();
 
                 const core = await (async (ext) => {
                     if (["fds", "nes", "unif", "unf"].includes(ext))
@@ -315,7 +348,7 @@
 
                     if (["d64"].includes(ext))
                         return "vice_x64sc"
-                    
+
                     if (["md", "sg", "smd", "gen"].includes(ext))
                         return "segaMD"
 
@@ -345,7 +378,9 @@
                             "Sega Saturn": "segaSaturn",
                             "Atari 7800": "atari7800",
                             "Atari 2600": "atari2600",
-                            "Arcade": "arcade",
+                            "Arcade (FBNeo / CPS-1·2·3)": "fbneo",
+                            "Arcade (Generic)": "arcade",
+                            "MAME 2003-Plus": "mame2003_plus",
                             "NEC TurboGrafx-16/SuperGrafx/PC Engine": "pce",
                             "NEC PC-FX": "pcfx",
                             "SNK NeoGeo Pocket (Color)": "ngp",
@@ -358,7 +393,7 @@
                             "Commodore PET": "vice_xpet",
                             "Amiga": "puae"
                         }
-                        
+
                         if (enableThreads) {
                             coreValues["DOSBOX-PURE"] = "dosbox_pure";
                             coreValues["PlayStation Portable"] = "ppsspp";
@@ -367,15 +402,16 @@
 
                         for (let core in coreValues) {
                             if (core.toLowerCase() === ext) {
-                                resolve(core)
+                                resolve(coreValues[core])
+                                return
                             }
                         }
- 
+
                         const cores = Object.keys(coreValues).sort().reduce(
-                            (obj, key) => { 
-                                obj[key] = coreValues[key]; 
+                            (obj, key) => {
+                                obj[key] = coreValues[key];
                                 return obj;
-                            }, 
+                            },
                             {}
                         );
 
@@ -418,7 +454,8 @@
                 window.EJS_biosUrl = biosUrl;
                 window.EJS_gameUrl = url;
                 window.EJS_core = core;
-                window.EJS_pathtodata = "data/";
+                // 外部ホスト / CDN からコアとランタイム資産を取得
+                window.EJS_pathtodata = externalDataPath;
                 window.EJS_startOnLoaded = true;
                 window.EJS_DEBUG_XX = enableDebug;
                 window.EJS_threads = enableThreads;
@@ -430,14 +467,15 @@
                         alert("The emulator has exited. This callback can be used to do any cleanup or show a message to the user.");
                     };
 
-                script.src = "data/loader.js";
+                console.log("Loading EmulatorJS from external path:", externalDataPath);
+                script.src = `${externalDataPath}loader.js`;
                 document.body.appendChild(script);
             }
-            
+
             input.onchange = async () => {
                 run(true);
             }
-            
+
             box.ondragover = () => box.setAttribute("drag", true);
             box.ondragleave = () => box.removeAttribute("drag");
         </script>

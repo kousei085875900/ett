@@ -1,19 +1,16 @@
-<div id="game-container" style="max-width: 100%;">
+<div id="game-container" style="max-width:100%">
     <div id="game"></div>
 </div>
-
 <script type="text/javascript">
     // ==========================================
-    // 【サイズ変更用の変数設定】
+    // 変数は倍率のみ指定（例: 1.5倍、2倍 など）
     // ==========================================
-    const baseWidth = 800;             // 好きな横幅（px）
-    const aspectRatio = 3 / 4;         // 画面比率 (4:3)
-    const toolbarHeight = 40;          // ツールバーの高さ（目安）
-    
-    // 計算した値を親要素のスタイルに動的適用
+    const scale = 1.5; 
+
+    // 元のサイズ（640x480）に倍率を掛け算してCSSに適用
     const container = document.getElementById('game-container');
-    container.style.width = baseWidth + 'px';
-    container.style.height = (baseWidth * aspectRatio) + toolbarHeight + 'px';
+    container.style.width = (640 * scale) + 'px';
+    container.style.height = (480 * scale) + 'px';
     // ==========================================
 
     EJS_player = '#game';
